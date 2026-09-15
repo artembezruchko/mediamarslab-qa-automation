@@ -1,5 +1,7 @@
 # QA Automation — mediamarslab recruitment app
 
+[![Playwright Tests](https://github.com/artembezruchko/mediamarslab-qa-automation/actions/workflows/playwright.yml/badge.svg)](https://github.com/artembezruchko/mediamarslab-qa-automation/actions/workflows/playwright.yml)
+
 Playwright + TypeScript test suite (Page Object Model) for
 `https://qa-a.recruitment.mediamarslab.com/`, covering UI E2E, API contracts, and
 cross-verification against the app's internal analytics feed
