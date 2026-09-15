@@ -50,19 +50,24 @@ The suite runs fully serialized (`workers: 1`) — see "Rate limits" below for w
 with higher parallelism against this particular backend causes real, hard-to-diagnose
 failures, not just slowness.
 
-**`npm run test:resilient`**: a full run's own auth traffic can exhaust the `/api/auth/*`
-budget right near the end, failing whichever tests happened to need an auth call in that
-last stretch (confirmed repeatedly — a different subset fails each run, and every one passes
-cleanly in isolation once the window clears; see "Rate limits" below). Playwright's own
-`retries` (in `playwright.config.ts`) fires immediately and just re-hits the same exhausted
-window, so it can't fix this. `scripts/test-with-retry.js` wraps `playwright test`: on
-failure it probes the real budget via the API's own `RateLimit-Remaining`/`Retry-After`
-response headers, waits only as long as actually needed (falling back to `RETRY_COOLDOWN_MS`,
-default 6 minutes, if the probe itself fails), then re-runs only the failed tests
+**`npm run test:resilient`**: a full run's own traffic can exhaust either of the two rate
+limits documented below right near the end, failing whichever tests happened to need a call
+in that last stretch (confirmed repeatedly — a different subset fails each run, and every one
+passes cleanly in isolation once the window clears). Playwright's own `retries` (in
+`playwright.config.ts`) fires immediately and just re-hits the same exhausted window, so it
+can't fix this. `scripts/test-with-retry.js` wraps `playwright test`: on failure it waits at
+least `RETRY_MIN_COOLDOWN_MS` (default 90s — comfortably past the general limit's 60s window,
+which has no response header this script can probe) before every retry round, extending that
+further if the `/api/auth/*`-specific probe (via the API's own `RateLimit-Remaining`/
+`Retry-After` headers) reports a longer `Retry-After` (falling back to `RETRY_COOLDOWN_MS`,
+default 6 minutes, if that probe itself fails), then re-runs only the failed tests
 (`playwright test --last-failed`) — up to `RETRY_ROUNDS` times (default 3). Any arguments
 after the script name are forwarded to `playwright test` on every attempt, e.g. `npm run
 test:resilient -- --project=e2e`. If it's still failing after all rounds, that's a real
-regression, not rate-limiting.
+regression, not rate-limiting. CI (`.github/workflows/playwright.yml`) uses this instead of a
+bare `playwright test` for the same reason, and runs `api-tests` after `test` rather than
+concurrently, since two GitHub-hosted runners hitting the same rate-limited backend at once
+just compounds both budgets' exhaustion.
 
 ## Project structure
 
